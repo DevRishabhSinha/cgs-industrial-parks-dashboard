@@ -24,12 +24,11 @@ The primary goal is to provide policymakers, researchers, and the public with an
 9. [Troubleshooting & Tips](#troubleshooting--tips)
 10. [Big Files Summary](#big-files-summary)
 11. [Contributing](#contributing)
-12. [License](#license)
 
 ---
 
 ## Project Structure
-
+```
 indonesian-industrial-parks-dashboard/
 ├── index.html                   # Main interactive map page
 ├── dataset.html                 # Dataset download page
@@ -48,7 +47,7 @@ indonesian-industrial-parks-dashboard/
 ├── firebase.json                # Firebase configuration (hosting, etc.)
 ├── .firebaserc                  # Firebase project aliases
 └── README.md                    # This documentation
-
+```
 
 - **index.html** is the core landing page with the Leaflet map and interactive layers.
 - **dataset.html** handles the CSV download and records user info to Firebase before allowing download.
@@ -138,6 +137,7 @@ const firebaseConfig = {
   measurementId: "..."
 };
 firebase.initializeApp(firebaseConfig);
+```
 
 Make sure these values match your Firebase project settings. If you create a new Firebase project, update these accordingly.
 
@@ -204,6 +204,7 @@ Make sure these values match your Firebase project settings. If you create a new
 ### Deploy
 ```bash
 firebase deploy --only hosting
+```
 
 - Once deployed, Firebase will provide a live URL (e.g., `https://your-project.web.app`).
 
@@ -249,6 +250,7 @@ jobs:
 
       - name: Firebase Deploy
         run: firebase deploy --token ${{ secrets.FIREBASE_TOKEN }}
+```
 
 ## Troubleshooting & Tips
 
