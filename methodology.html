@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>Methodology</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/light/main.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.0.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.0.0/firebase-database.js"></script>
+    <style>
+        html,
+        body {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            /* Prevents the whole page from scrolling */
+            font-family: Arial, sans-serif;
+        }
+
+        #viewDiv {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 0;
+        }
+
+        #topBar {
+            background-color: rgba(4, 129, 165, 0.85);
+            color: white;
+            text-align: center;
+            padding: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            position: fixed;
+            /* Fixed position to keep it at the top */
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 2;
+        }
+
+        #topBarNav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 10px;
+            font-weight: bold;
+            transition: color 0.3s ease;
+        }
+
+        #topBarNav a:hover {
+            color: #cccccc;
+        }
+
+        #topBar img {
+            height: 30px;
+            margin-right: 10px;
+        }
+
+        .container {
+            position: absolute;
+            /* Absolute position for the scrollable container */
+            top: 60px;
+            /* Positioned below the fixed top bar */
+            bottom: 0;
+            /* Extends to the bottom */
+            left: 0;
+            right: 0;
+            overflow-y: auto;
+            /* Makes the container scrollable */
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            z-index: 1;
+            max-width: 900px;
+            margin: 0 auto;
+            border-radius: 20px;
+            box-shadow: 0 1px 1px rgba(0, 0, 0, 0.321);
+        }
+
+        .content-section h2 {
+            margin-top: 0;
+        }
+
+        .content-section b {
+            font-weight: bold;
+        }
+
+        .content-section table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .content-section th,
+        .content-section td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+
+        .content-section th {
+            background-color: rgba(4, 129, 165, 0.85);
+            color: white;
+        }
+    </style>
+</head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-EC31YX3MZC"></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-EC31YX3MZC');
+</script>
+
+<body>
+    <div id="topBar">
+        <img src="cgs_logo.png" alt="Logo" style="height: 30px; margin-right: 10px;" href="https://cgs.umd.edu/">
+        <a class="ip" href="index.html" style="text-decoration: none; color:white">Industrial Park Dashboard</a>
+        <div id="topBarNav" style="margin-left: auto;">
+            <a href="about.html">About</a>
+            <a
+                href="https://cgs.umd.edu/research-impact/publications/industrial-parks-indonesia-challenges-and-opportunities-sustainable">Policy
+                Brief</a>
+            <a href="methodology.html">Methodology</a>
+            <a href="dataset.html">Download Dataset</a>
+            <a href="dashboard.html">Dashboard</a>
+            <a href="contribute.html">Contribute</a>
+            <a href="contact.html">Contact</a>
+        </div>
+    </div>
+    <div id="viewDiv"></div>
+    <div class="container content-section">
+        <h2>Methodology</h2>
+        <p><i>Note: The dataset was updated October 10, 2024 with corrections, archived links, and the addition of Indonesia Huabao Industrial Park. For detailed information on dataset updates, please refer to our <a href="https://docs.google.com/spreadsheets/d/1JZlqpgZOxILJFm7U8k_yU-aBG0wD-Xss1l0wrwDJ7ts/edit?usp=sharing" target="_blank">Changelog</a>.</i></p>
+        Our data collection effort began in October 2022. We first compiled a list of industrial parks and basic information from the Indonesian Ministry of Industry’s list of kawasan industri and the EU-Indonesia
+            Business Network Industrial Estate Directory. Overtime, we added industrial parks that we learned of through
+            other sources, such as the Batam 2022 Industrial Estate Book or news articles. For each industrial park
+            included in our dataset, at least one source classified the location as an industrial park, industrial
+            estate, kawasan industri, or related status, such as a KEK. Our dataset is not a comprehensive list of all
+            industrial parks in Indonesia; we limited our initial dataset to 140 industrial parks to focus on data
+            collection across all of our fields of interest. In the future, we hope to expand the dataset to include
+            additional industrial parks currently excluded from our dataset.</p>
+        <p>After we compiled our initial list of industrial parks and basic information on each park, we focused on
+            adding more detailed information and sources for specific groups of fields, including operational status,
+            main industry, disputes, and electricity source and capacity. Some of these focus areas, such as electricity
+            source and dispute type, contain non mutually exclusive categorical data. These field groups have been
+            represented as a series of dummy columns (1 for occurrence, 0 for non occurrence) with associated notes
+            columns to present details and sources for our findings. To document our sources, we have quoted relevant
+            paragraphs from sources in notes columns, with the links for all sources located in the “Sources” column.
+        </p>
+        <p>The table below provides a description of the data collection process for each group of fields. Additional
+            information regarding the meaning of different field values (“Status” and “Disputes” values) is included in
+            the Results section.</p>
+
+        <table>
+            <tr>
+                <th>Field or Field Group</th>
+                <th>Field Names and Values</th>
+                <th>Methodology</th>
+            </tr>
+            <tr>
+                <td><b>Basic Information</b></td>
+                <td>Industrial Park Name, Manager, Size (ha)</td>
+                <td>
+                    <ul>
+                        <li>We primarily collected data on industrial park name, manager, location, and size from the
+                            Indonesian Ministry of Industry’s Kawasan Industri list and the EU-Indonesia Business
+                            Network’s Industrial Estates directory.</li>
+                        <li>Information was supplemented with other publications, such as the Batam 2022 Industrial
+                            Estate Book, and news articles.</li>
+                        <li>Manager is the company or entity responsible for operations of the industrial park.</li>
+                        <li>For size (ha), if sources reported conflicting information, or the industrial park was not
+                            included in the Ministry of Industry’s list, we included the most commonly reported size.
+                        </li>
+                    </ul>
+                </td>
+            </tr>
+            <tr>
+                <td><b>Location</b></td>
+                <td>Location, Regency, Province, Region, Latitude, Longitude, Location Notes</td>
+                <td>
+                    We gathered location information from the Ministry of Industry, EU-Indonesia Business Network, Batam
+                    Industrial Estate Book, company websites and materials, and news articles. We verified locations
+                    using Google Maps and use Google Maps’ address formatting, minus the Geocode. Latitude and longitude
+                    coordinates are also reported from Google Maps. For industrial parks where we could not verify the
+                    exact location, further information on the approximate location reported is provided in “Location
+                    Notes”. Region, compiled based on province, follows Indonesia’s geographical unit divisions (ISO -
+                    Wikipedia).
+                </td>
+            </tr>
+            <tr>
+                <td><b>Electricity</b></td>
+                <td>Electricity Provider, Boolean Columns:
+                    <ul>
+                        <li>PLN</li>
+                        <li>Captive Coal Power Plant</li>
+                        <li>Captive Gas Power Plant</li>
+                        <li>Bioenergy</li>
+                        <li>Solar</li>
+                        <li>Hydropower</li>
+                        <li>Electricity Provider Unclear</li>
+                    </ul>
+                    Electricity Capacity Notes, Electricity Capacity (MW), GEM
+                </td>
+                <td>
+                    The electricity data used is sourced from industrial park websites and publications, the Batam
+                    Industrial Estates book, news articles, and Global Energy Monitor’s Global Coal Plant and Global Oil
+                    and Gas Plant datasets and wiki. We include excerpts from reports and news articles used to
+                    establish an industrial park’s electricity sources or capacity in the Electricity Capacity Notes
+                    column. Electricity capacity is reported in megawatts (MW). For sources that report electricity
+                    capacity in other units, a capacity factor of 1 is assumed for conversions to MW. If sources cite
+                    different electricity capacities for one industrial park, we conservatively use the lowest, most
+                    commonly reported electricity capacity. Many industrial parks only have data on electricity
+                    providers, not electricity capacity, especially for industrial parks that source from PLN.
+                </td>
+            </tr>
+            <tr>
+                <td><b>Tenants</b></td>
+                <td></td>
+                <td>List of tenant companies located at an industrial park. Data is not all-encompassing and requires
+                    further verification. We collected data from industrial park websites, websites that list companies
+                    at industrial parks, the Batam Industrial Estate Book, and Google Maps.</td>
+
+            </tr>
+            <tr>
+                <td><b>Sources</b></td>
+                <td></td>
+                <td>List of references used to collect data for all columns of an industrial park. If a link no longer
+                    works, it is marked as “Broken” (text from a broken site has still been documented in a long-text
+                    column).</td>
+
+            </tr>
+            <tr>
+                <td><b>Foreign Company Involvement</b></td>
+                <td>Boolean Columns:
+                    <ul>
+                        <li>Foreign Founder or Manager</li>
+                        <li>Foreign Tenants</li>
+                        <li>China as Founder or Manager</li>
+                        <li>China as Tenant</li>
+                    </ul>
+                    Foreign Company Involvement Notes
+                </td>
+                <td>
+                    “Foreign Founder or Manager” lists the nationality of foreign companies that are one of the primary
+                    founders, owners, or managers of the industrial park; in some cases, the company is an Indonesian
+                    subsidiary of a larger company headquartered in another country. “Foreign Tenants” lists the
+                    nationalities of foreign companies that are tenants at the industrial park. We only assessed tenant
+                    company nationality for large tenant companies or industrial parks with few tenants. For industrial
+                    parks with many tenants, this column is likely missing data. Details regarding the specific foreign
+                    companies involved in the industrial park are located in the “Foreign Company Involvement Notes”
+                    column.
+                </td>
+            </tr>
+            <tr>
+                <td><b>Status</b></td>
+                <td>Status, Status Values: Before Construction, Under Construction, Operational, Operational with
+                    Continued Construction, Stalled, Unclear, States Notes</td>
+                <td>
+                    We report operational status based on company websites, Google Maps, and news articles. On Google
+                    Maps, we checked the industrial park location for the presence of tenant companies and reviews
+                    indicating the status of the industrial park. For parks with the status of “Stalled” or “Unclear,”
+                    we viewed Sentinel Imagery to scan for evidence of construction or buildings at the site during June
+                    - August 2023. The status of “Before Construction” indicates that the industrial park is planned,
+                    but construction has not yet started. A status of “Stalled” indicates that an industrial park was
+                    planned or at one point under construction, but reportedly failed to progress. A status of “Unclear”
+                    means that while the government or other sources claim that an industrial park exists, we could not
+                    find evidence to determine the industrial park’s status.
+                </td>
+            </tr>
+            <tr>
+                <td><b>Age</b></td>
+                <td>Year Operations Began, Year Construction Began, Year Founded, Age</td>
+                <td>
+                    Using company materials and news articles, we tracked the year the industrial park’s operations
+                    began, construction began, or was founded (the date the industrial park was announced by a company
+                    or governmental entity or companies signed an agreement to construct the industrial park). To
+                    determine age, we subtracted the oldest reported year from 2024.
+                </td>
+            </tr>
+            <tr>
+                <td><b>Disputes</b></td>
+                <td>Boolean columns:
+                    <ul>
+                        <li>Legal dispute with Indonesian government</li>
+                        <li>Legal dispute with a company</li>
+                        <li>Dispute with local residents</li>
+                        <li>Land acquisition issues</li>
+                        <li>Environmental Impact</li>
+                    </ul>
+                    Dispute Explanations
+                </td>
+                <td>
+                    We gathered most information on disputes from local news and environmental organizations. The
+                    dispute columns present are marked in the dummy columns. Many industrial parks have multiple dispute
+                    types present. In the “Dispute Explanations” column, each dispute type present is listed and
+                    underlined, with details and corresponding news articles under each dispute type. Some events are
+                    counted as multiple dispute types (for example, we categorize local resident protests regarding land
+                    acquisition issues as both “Dispute with local residents” and “Land acquisition issues”).
+                </td>
+            </tr>
+            <tr>
+                <td><b>Electric Vehicle (Production Mentioned)</b></td>
+                <td></td>
+                <td>If an industrial park’s materials or news articles mention that the industrial park contributes to
+                    electric vehicle supply chains or production, the column has the value 1.</td>
+            </tr>
+            <tr>
+                <td><b>Key Commodities</b></td>
+                <td>Boolean Columns:
+                    <ul>
+                        <li>Nickel</li>
+                        <li>Aluminum</li>
+                        <li>Copper</li>
+                        <li>Palm Oil</li>
+                        <li>Iron and Steel</li>
+                    </ul>
+                </td>
+                <td>
+                    For each industrial park with a tenant company participating in the production or extraction of a
+                    key commodity listed, the corresponding dummy column is marked. Used to track the presence of key
+                    industries at an industrial park. For example, if an industrial park’s main industry is
+                    “Mixed/General,” but one or more tenants are producing palm oil, the “Palm Oil” column would be
+                    marked.
+                </td>
+            </tr>
+            <tr>
+                <td><b>Industry</b></td>
+                <td>Main Industry, Main Industry Values: Mixed/General, Manufacturing, IT, Nickel, Aluminum, Other
+                    Metals, Chemicals, Petrochemicals, Palm Oil, Coal, Unknown, Main Industry Notes</td>
+                <td>
+                    Main Industry was determined primarily through an industrial park’s website, company materials, or
+                    the tenant companies located at an industrial park. As a measure of intercoder reliability, two
+                    researchers independently categorized each industrial park based on previously collected information
+                    on the industrial park’s status and tenants. For industrial parks where the categorizations
+                    differed, additional information was examined to determine the final categorization. “Main Industry
+                    Notes” includes notes of tenant company industries, company materials, or other evidence used to
+                    establish an industrial park’s industry categorization.
+                </td>
+            </tr>
+        </table>
+
+    </div>
+    <script>
+        var map = L.map('viewDiv', { zoomControl: false }).setView([-2.548926, 118.0148634], 5);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        }).addTo(map);
+    </script>
+</body>
+
+</html>

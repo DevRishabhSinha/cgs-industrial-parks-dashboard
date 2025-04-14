@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Industrial Park Dashboard</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/light/main.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.0.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.0.0/firebase-database.js"></script>
+  <style>
+    html,
+    body,
+    #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+    }
+
+    #viewDiv {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 0;
+    }
+
+    .container,
+    #topBar {
+      position: relative;
+      z-index: 1;
+    }
+
+    #topBar {
+      background-color: rgba(4, 129, 165, 0.85);
+      color: white;
+      text-align: center;
+      padding: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 100px auto;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 20px;
+      box-shadow: 0 1px 1px rgba(0, 0, 0, 0.321);
+    }
+
+    #viewDiv {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 0;
+    }
+
+    #topBar {
+      background-color: rgb(4, 129, 165);
+      color: white;
+      text-align: center;
+      padding: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      position: relative;
+      z-index: 2;
+    }
+
+    #topBarNav a {
+      color: white;
+      text-decoration: none;
+      margin: 0 10px;
+      font-weight: bold;
+      transition: color 0.3s ease;
+    }
+
+    #topBarNav a:hover {
+      color: #cccccc;
+    }
+
+    #topBar img {
+      height: 30px;
+      margin-right: 10px;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 600px;
+      margin: 100px auto;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 20px;
+      box-shadow: 0 1px 1px rgba(0, 0, 0, 0.321);
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+    }
+
+    label {
+      margin-top: 10px;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    textarea {
+      padding: 10px;
+      margin-top: 5px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      font-family: Arial, sans-serif;
+      /* Ensure the font matches */
+    }
+
+    ::placeholder {
+      font-family: Arial, sans-serif;
+      /* Ensure the placeholder text matches the font */
+      color: #888;
+      /* Optional: Adjust placeholder color */
+    }
+
+    input[type="submit"] {
+      background-color: rgb(4, 129, 165);
+      color: white;
+      padding: 15px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+
+    input[type="submit"]:hover {
+      background-color: #037ca5;
+    }
+
+    .ip {
+      color: white;
+      text-decoration: none;
+      margin: 0 10px;
+      font-weight: bold;
+      transition: color 0.3s ease;
+    }
+  </style>
+</head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-EC31YX3MZC"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() { dataLayer.push(arguments); }
+  gtag('js', new Date());
+
+  gtag('config', 'G-EC31YX3MZC');
+</script>
+
+<body>
+
+  <div id="topBar">
+    <img src="cgs_logo.png" alt="Logo" style="height: 30px; margin-right: 10px;" href="https://cgs.umd.edu/"><a
+      class="ip" href="index.html">Industrial Park Dashboard</a>
+    <div id="topBarNav" style="margin-left: auto;">
+      <a href="about.html">About</a>
+      <a
+        href="https://cgs.umd.edu/research-impact/publications/industrial-parks-indonesia-challenges-and-opportunities-sustainable">Policy
+        Brief</a>
+      <a href="methodology.html">Methodology</a>
+      <a href="dataset.html">Download Dataset</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="contribute.html">Contribute</a>
+      <a href="contact.html">Contact</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <h2>Contact Us</h2>
+    <div id="success-message" style="display: none; color: green; margin-bottom: 15px; padding: 10px; background-color: #e8f5e9; border-radius: 4px;">
+      Your message has been sent successfully!
+    </div>
+    <form id="submit-to-firebase">
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" placeholder="Your name..">
+
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" placeholder="Your email..">
+
+      <label for="message">Message</label>
+      <textarea id="message" name="message" placeholder="Write something.." style="height:200px"></textarea>
+
+      <input type="submit" value="Submit">
+    </form>
+  </div>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBh0M9uGu7zYnqsxWeQKin5BOdSB5m8NEk",
+      authDomain: "cgs-dashboard-v2.firebaseapp.com",
+      projectId: "cgs-dashboard-v2",
+      storageBucket: "cgs-dashboard-v2.appspot.com",
+      messagingSenderId: "39371528148",
+      appId: "1:39371528148:web:3c42a60e9e251d79b86841",
+      measurementId: "G-W04LXRQ050"
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    const form = document.getElementById('submit-to-firebase');
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      var database = firebase.database();
+      var name = document.getElementById('name').value;
+      var email = document.getElementById('email').value;
+      var message = document.getElementById('message').value;
+
+      database.ref('submissions').push({
+        name: name,
+        email: email,
+        message: message,
+        timestamp: firebase.database.ServerValue.TIMESTAMP,
+        clientTimestamp: new Date().toISOString(),
+        humanReadableTime: new Date().toLocaleString(),
+        unixTimestamp: Math.floor(Date.now() / 1000),
+        dateComponents: {
+          year: new Date().getFullYear(),
+          month: new Date().getMonth() + 1,
+          day: new Date().getDate(),
+          hours: new Date().getHours(),
+          minutes: new Date().getMinutes(),
+          seconds: new Date().getSeconds()
+        },
+        alternateTimestamps: {
+          dateString: new Date().toString(),
+          utcString: new Date().toUTCString(),
+          localeDateTime: {
+            date: new Date().toLocaleDateString(),
+            time: new Date().toLocaleTimeString()
+          },
+          timezoneOffset: new Date().getTimezoneOffset(),
+          timezoneName: Intl.DateTimeFormat().resolvedOptions().timeZone
+        },
+        systemInfo: {
+          userAgent: navigator.userAgent,
+          language: navigator.language,
+          platform: navigator.platform,
+          connectionType: navigator.connection ? navigator.connection.effectiveType : 'unknown'
+        },
+        metadata: {
+          submissionMethod: 'web-form',
+          version: '1.0',
+          submissionId: Math.random().toString(36).substr(2, 9) + '_' + Date.now()
+        }
+      }, function (error) {
+        if (error) {
+          console.error("Data could not be saved." + error);
+        } else {
+          console.log("Data saved successfully.");
+          document.getElementById('success-message').style.display = 'block';
+          form.reset();
+          // Hide success message after 5 seconds
+          setTimeout(function() {
+            document.getElementById('success-message').style.display = 'none';
+          }, 5000);
+        }
+      });
+    });
+  </script>
+
+  <div id="viewDiv"></div>
+
+  <script>
+    var map = L.map('viewDiv', { zoomControl: false }).setView([-2.548926, 118.0148634], 5);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+    }).addTo(map);
+  </script>
+
+</body>
+
+</html>
