@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>Industrial Park Dashboard</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/light/main.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        html, body, #viewDiv {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+        }
+
+        #viewDiv {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 0;
+        }
+
+        #topBar {
+            background-color: rgb(4, 129, 165);
+            color: white;
+            text-align: center;
+            padding: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 2;
+        }
+
+        #topBarNav {
+            margin-left: auto;
+        }
+
+        #topBarNav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 10px;
+            font-weight: bold;
+            transition: color 0.3s ease;
+        }
+
+        #topBarNav a:hover {
+            color: #cccccc;
+        }
+
+        #topBar img {
+            height: 30px;
+            margin-right: 10px;
+        }
+
+        .ip {
+            color: white;
+            text-decoration: none;
+            margin: 0 10px;
+            font-weight: bold;
+            transition: color 0.3s ease;
+        }
+
+        .dashboard-grid {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            margin-top: 60px;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            box-shadow: 0 1px 1px rgba(0, 0, 0, 0.321);
+            padding: 20px;
+        }
+
+        .chart-container h2 {
+            margin: 0 0 15px 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .chart-container img {
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="topBar">
+        <img src="cgs_logo.png" alt="Logo" href="https://cgs.umd.edu/">
+        <a class="ip" href="index.html">Industrial Park Dashboard</a>
+        <div id="topBarNav">
+            <a href="about.html">About</a>
+            <a href="https://cgs.umd.edu/research-impact/publications/industrial-parks-indonesia-challenges-and-opportunities-sustainable">Policy Brief</a>
+            <a href="methodology.html">Methodology</a>
+            <a href="dataset.html">Download Dataset</a>
+            <a href="dashboard.html">Dashboard</a>
+            <a href="contribute.html">Contribute</a>
+            <a href="contact.html">Contact</a>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <div class="chart-container">
+            <h2>Status Distribution</h2>
+            <img src="public/images/status_distribution.png" alt="Status Distribution">
+        </div>
+        <div class="chart-container">
+            <h2>Industry Distribution</h2>
+            <img src="public/images/industry_distribution.png" alt="Industry Distribution">
+        </div>
+        <div class="chart-container">
+            <h2>Regional Distribution</h2>
+            <img src="public/images/region_status.png" alt="Regional Distribution">
+        </div>
+        <div class="chart-container">
+            <h2>Age Distribution</h2>
+            <img src="public/images/age_distribution.png" alt="Age Distribution">
+        </div>
+        <div class="chart-container">
+            <h2>Electricity Capacity by Status</h2>
+            <img src="public/images/electricity_capacity_status.png" alt="Electricity Capacity by Status">
+        </div>
+        <div class="chart-container">
+            <h2>Electricity Capacity by Industry</h2>
+            <img src="public/images/electricity_capacity_industry.png" alt="Electricity Capacity by Industry">
+        </div>
+        <div class="chart-container">
+            <h2>Electricity Sources</h2>
+            <img src="public/images/electricity_sources.png" alt="Electricity Sources">
+        </div>
+        <!-- <div class="chart-container">
+            <h2>Foreign Company Involvement</h2>
+            <img src="public/images/foreign_founders.png" alt="Foreign Founders Distribution">
+        </div> -->
+        <div class="chart-container">
+            <h2>Disputes</h2>
+            <img src="public/images/disputes.png" alt="Disputes Distribution">
+        </div>
+    </div>
+
+    <div id="viewDiv"></div>
+
+    <script>
+        var map = L.map('viewDiv', { zoomControl: false }).setView([-2.548926, 118.0148634], 5);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        }).addTo(map);
+    </script>
+</body>
+</html>

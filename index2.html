@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>Industrial Park Dashboard</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/light/main.css" />
+    <script src="https://js.arcgis.com/4.28/"></script>
+    <style>
+        html,
+        body {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+        }
+
+        #popup {
+            position: absolute;
+            top: 60px;
+            right: -150px; /* Initially off-screen */
+            width: 250px;
+            height: 100px;
+            background-color: #ffffff;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0px 0px 10px 2px rgba(0, 0, 0, 0.6);
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            color: #333;
+            z-index: 10;
+            opacity: 0; /* Initially hidden */
+            transition: transform 1s ease-in-out, opacity 1s ease-in-out;
+        }
+
+        #popup.show {
+            transform: translateX(-490px); /* Moves it from right to its position */
+            opacity: 1; /* Makes it fully visible */
+        }
+
+        /* Hide the popup by sliding it out */
+        #popup.hide {
+            transform: translateX(150px); /* Moves it out to the right */
+            opacity: 0; /* Makes it invisible */
+        }
+
+        #topBar {
+            background-color: rgb(4, 129, 165);
+            color: white;
+            text-align: center;
+            padding: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            box-shadow: 0px 0px 10px 2px rgba(0, 0, 0, 1);
+        }
+
+        /* Navigation menu styles */
+        .nav-links {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+        }
+
+        .nav-links li {
+            padding: 8px;
+            margin-left: 10px;
+        }
+
+        .nav-links li a {
+            text-decoration: none;
+            color: white;
+            font-weight: bold;
+        }
+
+        #legend {
+            position: absolute;
+            top: 60px;
+            right: 10px;
+            width: 320px;
+            height: 350px;
+            /* Adjust based on content */
+            overflow-y: auto;
+            /* Allows vertical scrolling if content overflows */
+            background: #ffffff;
+            /* Clean white background */
+            padding: 15px;
+            /* More padding for a spacious look */
+            border-radius: 8px;
+            /* Rounded corners for a modern touch */
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.1);
+            /* Softer shadow for depth */
+            font-family: "Arial", sans-serif;
+            font-size: 14px;
+            color: #333;
+            box-sizing: border-box;
+            z-index: 50;
+            border: 1px solid #e0e0e0;
+            /* Subtle border */
+            transition: all 0.3s ease-in-out;
+            /* Smooth transition for hover effect */
+            box-shadow: 0px 0px 10px 2px rgba(0, 0, 0, 0.6);
+        }
+
+        #legend:hover {
+            box-shadow: 0px 0px 10px 2px rgba(0, 0, 0, 0.8);
+            transform: translateY(-5px);
+            /* Slight lift effect on hover */
+        }
+
+        /* Improving scrollbar appearance for a modern look */
+        #legend::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #legend::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        #legend::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+
+        #legend::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        #infoBox,
+        #legend {
+            position: absolute;
+            z-index: 50;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 10 10px 10px 10px rgba(0, 0, 0, 0.3) inset;
+        }
+
+        #layerSwitcher {
+            position: absolute;
+            top: 60px;
+            left: 10px;
+            width: 300px;
+            padding: 0.5rem;
+            background: #ffffff;
+            /* Light background for the dropdown */
+            border: 2px solid #eaeaea;
+            /* Subtle border */
+
+            /* Soft shadow for depth */
+            border-radius: 8px;
+            /* Rounded corners for a modern look */
+            overflow: hidden;
+            /* Ensures the dropdown fits well within the box */
+            font-family: Arial, sans-serif;
+            color: #333;
+            z-index: 20;
+            box-shadow: 0px 0px 10px 2px rgba(0, 0, 0, 0.6);
+        }
+
+        #layerSwitcher:hover {
+            position: absolute;
+            top: 60px;
+            left: 10px;
+            width: 300px;
+            padding: 0.5rem;
+            background: #ffffff;
+            /* Light background for the dropdown */
+            border: 2px solid #eaeaea;
+            /* Subtle border */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            /* Soft shadow for depth */
+            border-radius: 8px;
+            /* Rounded corners for a modern look */
+            overflow: hidden;
+            /* Ensures the dropdown fits well within the box */
+            font-family: Arial, sans-serif;
+            color: #333;
+            z-index: 20;
+            box-shadow: 0px 0px 10px 3px rgba(0, 0, 0, 0.3) inset;
+        }
+
+        #layerSelect {
+            width: 100%;
+            padding: 0.5rem;
+            background-color: #fafafa;
+            /* Slightly different background to distinguish */
+            border: 1px solid #dddddd;
+            /* Light border for the select */
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+            /* Inner shadow for depth */
+            border-radius: 4px;
+            /* Rounded corners */
+            appearance: none;
+            /* Removes default style of select dropdown */
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="%23333" d="M7,10l5,5l5,-5Z" /></svg>');
+            /* Custom dropdown arrow */
+            background-repeat: no-repeat;
+            background-position: right 0.7em top 50%, 0 0;
+            /* Positioning the arrow */
+            background-size: 0.65em auto, 100%;
+            /* Sizing the arrow */
+            z-index: 20;
+        }
+
+        /* Hover effect for Layer Select */
+        #layerSelect:hover {
+            border-color: #cccccc;
+            /* Darker border on hover */
+            cursor: pointer;
+            /* Changes cursor to indicate interactivity */
+            z-index: 20;
+        }
+
+        #infoBox {
+            top: 140px;
+            left: 10px;
+            display: none;
+            width: 320px;
+            min-height: 0;
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            color: #333;
+            box-sizing: border-box;
+            box-shadow: 0px 0px 10px 2px rgba(0, 0, 0, 0.6);
+        }
+
+        #legend {
+            top: 60px;
+            right: 10px;
+        }
+
+        #sourceBox {
+            position: absolute;
+            top: 440px;
+            right: 10px;
+            width: 320px;
+            min-height: 100px;
+            /* Give it a minimum height so it's visible even if empty */
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            color: #333;
+            background: white;
+            /* Ensure background is white */
+            box-sizing: border-box;
+            border-radius: 5px;
+            /* Optional: for rounded corners */
+            box-shadow: 0px 0px 10px 2px rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            word-wrap: break-word;
+            /* Padding for inner content */
+            display: none;
+            /* Initially not displayed */
+            z-index: 20;
+            /* On top of other elements */
+        }
+
+        #topBarNav a {
+            color: white;
+            /* Match the top bar's color scheme */
+            text-decoration: none;
+            /* Remove underline from links */
+            margin: 0 10px;
+            /* Add some spacing between links */
+            font-weight: bold;
+            /* Optional: make text bold */
+            transition: color 0.3s ease;
+            /* Smooth transition for hover effect */
+        }
+
+        #topBarNav a:hover {
+            color: #cccccc;
+            /* Lighten the color on hover */
+        }
+
+        .ip {
+            color: white;
+            /* Match the top bar's color scheme */
+            text-decoration: none;
+            /* Remove underline from links */
+            margin: 0 10px;
+            /* Add some spacing between links */
+            font-weight: bold;
+            /* Optional: make text bold */
+            transition: color 0.3s ease;
+            /* Smooth transition for hover effect */
+        }
+
+        .source-link {
+            color: black;
+            /* Initial color of the links */
+            text-decoration: none;
+            /* Removes underline from links */
+        }
+
+        .source-link:hover {
+            color: blue;
+            /* Color of links on hover */
+            cursor: pointer;
+            /* Changes cursor to indicate clickable */
+        }
+    </style>
+</head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-EC31YX3MZC"></script>
+<script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() {
+        dataLayer.push(arguments);
+    }
+    gtag("js", new Date());
+
+    gtag("config", "G-EC31YX3MZC");
+</script>
+
+<body>
+    <div id="topBar">
+        <img src="cgs_logo.png" alt="Logo" style="height: 30px; margin-right: 10px" href="https://cgs.umd.edu/" /><a
+            class="ip" href="index.html">Industrial Park Dashboard</a>
+        <div id="topBarNav" style="margin-left: auto">
+            <a href="about.html">About</a>
+            <a
+                href="https://cgs.umd.edu/research-impact/publications/industrial-parks-indonesia-challenges-and-opportunities-sustainable">Policy
+                Brief</a>
+            <a href="methodology.html">Methodology</a>
+            <a href="dataset.html">Download Dataset</a>
+            <a href="dashboard.html">Dashboard</a>
+            <a href="contribute.html">Contribute</a>
+            <a href="contact.html">Contact</a>
+        </div>
+    </div>
+
+    <div id="layerSwitcher">
+        <select id="layerSelect">
+            <option value="Basic Information">Basic Information</option>
+            <option value="Status">Status</option>
+            <option value="Energy Source and Capacity">
+                Energy Source and Capacity
+            </option>
+            <option value="Foreign Company Involvement">
+                Foreign Company Involvement
+            </option>
+            <option value="Environmental Concerns and Disputes">
+                Environmental Concerns and Disputes
+            </option>
+            <option value="Key Commodities">Key Commodities</option>
+
+            <!-- Add more options for additional layers -->
+        </select>
+    </div>
+
+    <div id="infoBox">
+        <!-- Info will be displayed here -->
+    </div>
+
+    <div id="legend">
+        <!-- Legend will be added here by the ArcGIS API -->
+    </div>
+
+    <div id="popup">
+          <h3>Discover Our Methodology</h3>
+          <p>Learn how we approach industrial park research through our <a href="methodology.html">methodology page</a>.</p>
+
+      </div>
+
+    <div id="sourceBox">
+        <!-- Source information will be displayed here -->
+    </div>
+
+    <div id="viewDiv" style="width: 100%; height: 100%"></div>
+
+    <script>
+        require([
+            "esri/WebMap",
+            "esri/views/MapView",
+            "esri/widgets/Legend",
+            "esri/widgets/Popup",
+            "esri/layers/FeatureLayer",
+            "esri/renderers/visualVariables/SizeVariable",
+        ], function (WebMap, MapView, Legend, Popup, FeatureLayer, SizeVariable) {
+            var webMap = new WebMap({
+                portalItem: {
+                    id: "cd7f9b240d84426fafc981fe9a460513", // Replace with your Web Map ID
+                },
+            });
+
+            var view = new MapView({
+                container: "viewDiv",
+                map: webMap,
+                // Configure other view properties as needed
+                ui: {
+                    components: [], // Remove all default UI components
+                },
+            });
+
+            // --- Variables to hold the loaded GeoJSON data ---
+            let basicGeojsonData, metalGeojsonData, statusGeojsonData, energyGeojsonData, foreignInvolvementGeojsonData, disputeGeojsonData;
+
+            // --- Helper function to fetch GeoJSON data ---
+            function fetchGeoJSON(url) {
+                return fetch(url)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status} for ${url}`);
+                        }
+                        return response.json();
+                    })
+                    .catch(error => {
+                        console.error(`Error fetching ${url}:`, error);
+                        // Return a default empty structure or handle the error as needed
+                        return { type: "FeatureCollection", features: [] };
+                    });
+            }
+
+
+            function updateSourceBox(sources) {
+                var sourceBox = document.getElementById("sourceBox");
+                var content = "<h3>Sources</h3><ul>";
+
+                // Assuming sources start from the second element (skipping header)
+                for (let i = 1; i < sources.length; i++) {
+                    var link = sources[i]; // Assuming sources[i] is a valid URL
+                    // Correctly concatenating `href` value with the `link`
+                    content += `<li><a href="${link}" class="source-link" target="_blank">${sources[i]}</a></li>`;
+                }
+
+                content += "</ul>";
+                sourceBox.innerHTML = content;
+                sourceBox.style.display = "block"; // Show the sourceBox
+            }
+
+            function updateInfoBox(info) {
+                var infoBox = document.getElementById("infoBox");
+                var content = "";
+
+                info.forEach(function (infoItem, index, arr) {
+                    // Trim the current item to remove unnecessary whitespace
+                    infoItem = infoItem.trim();
+
+                    // Add the content
+                    content += `${infoItem}`;
+
+                    // Check if the next item exists and is not just whitespace or empty
+                    if (index < arr.length - 1 && arr[index + 1].trim() !== "") {
+                        // Add only one <br/> if the current or next item ends or starts with a newline, or current does not end with <br/>
+                        if (!infoItem.endsWith("<br/>")) {
+                            content += "<br/><br/>";
+                        }
+                    }
+                });
+
+                // Set the inner HTML of the infoBox
+                infoBox.innerHTML = content.trim();
+
+                 // Determine if the infoBox should be displayed based on the selected layer
+                 var selectedLayer = document.getElementById("layerSelect").value;
+                 // Define layers that should show the infoBox
+                 var infoBoxLayers = ["Status", "Energy Source and Capacity", "Foreign Company Involvement", "Environmental Concerns and Disputes"];
+
+                 if (infoBoxLayers.includes(selectedLayer) && content.trim() !== "") {
+                    infoBox.style.display = "block";
+                } else {
+                    infoBox.style.display = "none";
+                }
+            }
+
+            view.when(function () {
+                // --- Load all GeoJSON data asynchronously ---
+                Promise.all([
+                    fetchGeoJSON('data/basicGeojsonData.geojson'),
+                    fetchGeoJSON('data/metalGeojsonData.geojson'),
+                    fetchGeoJSON('data/statusGeojsonData.geojson'),
+                    fetchGeoJSON('data/energyGeojsonData.geojson'),
+                    fetchGeoJSON('data/foreignInvolvementGeojsonData.geojson'),
+                    fetchGeoJSON('data/disputeGeojsonData.geojson')
+                ]).then(([basicData, metalData, statusData, energyData, foreignData, disputeData]) => {
+                    // Assign fetched data to variables
+                    basicGeojsonData = basicData;
+                    metalGeojsonData = metalData;
+                    statusGeojsonData = statusData;
+                    energyGeojsonData = energyData;
+                    foreignInvolvementGeojsonData = foreignData;
+                    disputeGeojsonData = disputeData;
+
+                    console.log("GeoJSON data loaded successfully.");
+
+                    // --- Now that data is loaded, set up the rest of the logic ---
+
+                    // Add the Legend to the legend div
+                    var legend = new Legend({
+                        view: view,
+                        container: "legend",
+                    });
+
+                    var layerToModify = webMap.findLayerById(
+                        "Foreign Company Involvement"
+                    );
+
+                    // Check if the layer is correctly identified
+                    if (layerToModify) {
+                        // Clone the renderer to not directly modify the original one
+                        var renderer = layerToModify.renderer.clone();
+
+                        // Define the visual variable for size
+                        var sizeVisualVariable = new SizeVariable({
+                            target: "outline", // or "fill" depending on what you want to modify
+                            field: "Other", // the field that defines the size
+                            stops: [
+                                // Define size stops based on the view scale
+                                { size: 12, value: 1128 }, // size at a large scale (zoomed in)
+                                { size: 8, value: 2256 }, // size at a medium scale
+                                { size: 4, value: 4513 }, // size at a small scale (zoomed out)
+                            ],
+                        });
+
+                        // Update the renderer with the new visual variable
+                        renderer.visualVariables = [sizeVisualVariable];
+
+                        // Apply the updated renderer to the layer
+                        layerToModify.renderer = renderer;
+                    }
+
+                    // Function to switch layers
+                    function switchLayer(layerName) {
+                        webMap.allLayers.forEach(function (layer) {
+                            if (layer.type === "feature") {
+                                layer.visible = layer.title === layerName;
+                            }
+                        });
+
+                         // Determine if the infoBox should be displayed based on the selected layer
+                         var infoBoxLayers = ["Status", "Energy Source and Capacity", "Foreign Company Involvement", "Environmental Concerns and Disputes"];
+                         if (infoBoxLayers.includes(layerName)) {
+                            // The actual display logic is handled within updateInfoBox after a click
+                            // document.getElementById("infoBox").style.display = "block"; // Initial display state - might be better controlled by click event
+                         } else {
+                             document.getElementById("infoBox").style.display = "none";
+                         }
+                    }
+
+                    // Event listener for the dropdown
+                    document
+                        .getElementById("layerSelect")
+                        .addEventListener("change", function (event) {
+                            switchLayer(event.target.value);
+                             // Hide the infoBox and sourceBox when switching layers initially
+                            document.getElementById("infoBox").style.display = "none";
+                            document.getElementById("sourceBox").style.display = "none";
+                        });
+
+
+                    // Initialize map with the default layer selected
+                    var initialLayer = document.getElementById("layerSelect").value;
+                    switchLayer(initialLayer);
+
+
+                    // Event listener for map click
+                     view.on("click", function (event) {
+                        // Function to process sources string into HTML list
+                        function formatSourcesToList(sourcesString) {
+                            if (!sourcesString || typeof sourcesString !== 'string') {
+                                return "<ul><li>No source information available.</li></ul>";
+                            }
+                            var sourcesArray = sourcesString.trim().split("\n").filter(s => s.trim() !== ""); // Split and remove empty lines
+                            var content = "<ul>";
+                            sourcesArray.forEach(function (source) {
+                                let trimmedSource = source.trim();
+                                // Basic check if it looks like a URL to make it clickable
+                                if (trimmedSource.startsWith('http://') || trimmedSource.startsWith('https://')) {
+                                     content += `<li><a href="${trimmedSource}" class="source-link" target="_blank">${trimmedSource}</a></li>`;
+                                } else {
+                                     content += `<li>${trimmedSource}</li>`; // Add source as a list item
+                                }
+                            });
+                            content += "</ul>";
+                            return content;
+                        }
+
+                        view.hitTest(event).then(function (response) {
+                            if (response.results.length > 0) {
+                                var featureResult = response.results.find(function (result) {
+                                    // Ensure we're getting a result from a FeatureLayer
+                                    return result.graphic && result.graphic.layer && result.graphic.layer.type === "feature";
+                                });
+
+                                if (featureResult) {
+                                    var feature = featureResult.graphic;
+                                    var objectId = feature.attributes.ObjectId; // Make sure ObjectId exists and is correct field name
+                                    var selectedLayerName = document.getElementById("layerSelect").value;
+
+                                    // Map layer names to their data and info field
+                                    var layerDataMap = {
+                                        "Status": { data: statusGeojsonData, field: "Status Notes" },
+                                        "Energy Source and Capacity": { data: energyGeojsonData, field: "Electricity Capacity Notes" },
+                                        "Foreign Company Involvement": { data: foreignInvolvementGeojsonData, field: "Foreign Company Involvement Notes" },
+                                        "Environmental Concerns and Disputes": { data: disputeGeojsonData, field: "Dispute Explanations" }
+                                    };
+
+                                    // Map layer names to their default data (for sources when no specific info field)
+                                    var defaultSourceData = {
+                                        "Basic Information": basicGeojsonData,
+                                        "Key Commodities": metalGeojsonData
+                                        // Add other layers here if they primarily show sources
+                                    };
+
+                                    var notes = "";
+                                    var sources = "No source information available.";
+                                    var header = ""; // Initialize header
+
+                                    var selectedDataInfo = layerDataMap[selectedLayerName];
+                                    var defaultDataInfo = defaultSourceData[selectedLayerName];
+
+                                    var featureIndex = -1;
+
+                                    // Find the correct feature based on a common identifier if ObjectId isn't reliable
+                                    // For simplicity, we'll stick with ObjectId assumption first.
+                                    // Ensure objectId is treated as index (subtract 1 if it's 1-based)
+                                    // Note: Directly using ObjectId as index might be unreliable if IDs are not sequential starting from 1.
+                                    // A safer approach would be to find the feature by a unique ID field if available, or coordinates.
+                                    // Assuming ObjectId is sequential and 1-based for now:
+                                    if (objectId > 0) {
+                                         featureIndex = objectId - 1;
+                                    }
+
+
+                                    if (selectedDataInfo && featureIndex !== -1 && featureIndex < selectedDataInfo.data.features.length) {
+                                        const properties = selectedDataInfo.data.features[featureIndex].properties;
+                                        notes = properties[selectedDataInfo.field] || "No information available.";
+                                        sources = properties["Sources"] || "Sources not found.";
+                                        header = "<h3>" + selectedDataInfo.field + "</h3>"; // Set header for specific info layers
+                                        updateInfoBox([notes]); // Pass notes as an array for compatibility
+                                    } else if (defaultDataInfo && featureIndex !== -1 && featureIndex < defaultDataInfo.features.length) {
+                                        const properties = defaultDataInfo.features[featureIndex].properties;
+                                        sources = properties["Sources"] || "Sources not found.";
+                                        document.getElementById("infoBox").style.display = "none"; // Hide info box for layers without specific notes field
+                                        document.getElementById("infoBox").innerHTML = ""; // Clear info box
+                                    } else {
+                                        // Fallback if featureIndex is invalid or data not found
+                                        document.getElementById("infoBox").style.display = "none";
+                                        document.getElementById("infoBox").innerHTML = "";
+                                        document.getElementById("sourceBox").style.display = "none";
+                                        document.getElementById("sourceBox").innerHTML = "";
+                                        console.warn("Could not find feature data for ObjectId:", objectId, "in layer:", selectedLayerName);
+                                        return; // Exit if no valid feature data
+                                    }
+
+                                    // Update the sourceBox with formatted sources
+                                    var sourceContent = formatSourcesToList(sources);
+                                    document.getElementById("sourceBox").innerHTML = "<h3>Sources</h3>" + sourceContent;
+                                    document.getElementById("sourceBox").style.display = "block";
+
+                                } else {
+                                    // No feature layer graphic hit
+                                    document.getElementById("infoBox").style.display = "none";
+                                    document.getElementById("sourceBox").style.display = "none";
+                                }
+                            } else {
+                                // Clicked on the map base, not on a feature
+                                document.getElementById("infoBox").style.display = "none";
+                                document.getElementById("sourceBox").style.display = "none";
+                            }
+                        }).catch(err => {
+                             console.error("Error during hitTest or data processing:", err);
+                             document.getElementById("infoBox").style.display = "none";
+                             document.getElementById("sourceBox").style.display = "none";
+                        });
+                    });
+
+
+                }).catch(error => {
+                    console.error("Error loading GeoJSON data:", error);
+                    // Handle the error appropriately, e.g., show a message to the user
+                    alert("Failed to load map data. Please check the console for details.");
+                });
+
+            }); // End view.when
+        }); // End require
+
+        window.onload = function () {
+            var popup = document.getElementById("popup");
+
+            // Show the popup by adding the 'show' class
+            setTimeout(function () {
+                popup.classList.add("show");
+            }, 500); // Wait for 0.5 seconds after page load to start the swoosh in
+
+            // Hide the popup after 5 seconds by adding the 'hide' class
+            setTimeout(function () {
+                popup.classList.remove("show");
+                popup.classList.add("hide");
+            }, 9500); // 5 seconds (5000ms) after the popup appears
+        };
+    </script>
+</body>
+
+</html>

@@ -4,18 +4,28 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
     <title>Industrial Park Dashboard</title>
-    <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/light/main.css">
+    <!-- Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <!-- Plotly -->
+    <script src='https://cdn.plot.ly/plotly-2.29.1.min.js'></script>
+    <!-- PapaParse -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <!-- Font Awesome (for icons) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
     <style>
-        html, body, #viewDiv {
+        html, body {
             padding: 0;
             margin: 0;
             height: 100%;
             width: 100%;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            overflow-x: hidden; /* Prevent horizontal scroll if grid slightly overflows */
         }
 
-        #viewDiv {
+        #viewDiv { /* Leaflet map container */
             position: fixed;
             top: 0;
             left: 0;
@@ -37,72 +47,113 @@
             top: 0;
             left: 0;
             right: 0;
-            z-index: 2;
+            z-index: 1000; /* Highest z-index */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
-        #topBarNav {
-            margin-left: auto;
-        }
-
-        #topBarNav a {
-            color: white;
-            text-decoration: none;
-            margin: 0 10px;
-            font-weight: bold;
-            transition: color 0.3s ease;
-        }
-
-        #topBarNav a:hover {
-            color: #cccccc;
-        }
-
-        #topBar img {
-            height: 30px;
-            margin-right: 10px;
-        }
-
-        .ip {
-            color: white;
-            text-decoration: none;
-            margin: 0 10px;
-            font-weight: bold;
-            transition: color 0.3s ease;
-        }
+        #topBarNav { margin-left: auto; }
+        #topBarNav a { color: white; text-decoration: none; margin: 0 10px; font-weight: bold; transition: color 0.3s ease; }
+        #topBarNav a:hover { color: #cccccc; }
+        #topBar img { height: 30px; margin-right: 10px; }
+        .ip { color: white; text-decoration: none; margin: 0 10px; font-weight: bold; transition: color 0.3s ease; }
 
         .dashboard-grid {
             position: relative;
-            z-index: 1;
+            z-index: 5;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-            gap: 20px;
-            padding: 20px;
-            margin-top: 60px;
-            margin-bottom: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 25px;
+            padding: 25px;
+            margin-top: 70px;
+            margin-bottom: 25px;
+            /* Prevent grid items from affecting map layer clicks when hidden */
+            pointer-events: none;
         }
 
         .chart-container {
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 20px;
-            box-shadow: 0 1px 1px rgba(0, 0, 0, 0.321);
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
             padding: 20px;
+            height: 420px;
+            display: flex;
+            flex-direction: column;
+            position: relative; /* Needed for absolute positioning of button */
+            transition: all 0.4s ease-in-out; /* Smooth transition for maximize/minimize */
+            pointer-events: auto; /* Enable pointer events for containers */
+            overflow: hidden; /* Prevent content spill during transition */
         }
 
         .chart-container h2 {
             margin: 0 0 15px 0;
-            font-size: 1.25rem;
+            font-size: 1.15rem;
             font-weight: 600;
+            text-align: center;
+            color: #444;
+            flex-shrink: 0;
         }
 
-        .chart-container img {
+        .plotly-chart-div {
             width: 100%;
-            height: auto;
-            object-fit: contain;
-            border-radius: 8px;
+            flex-grow: 1;
+            min-height: 0;
         }
+
+        /* Maximize/Minimize Button */
+        .toggle-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(200, 200, 200, 0.5);
+            border: none;
+            border-radius: 4px;
+            padding: 3px 6px;
+            cursor: pointer;
+            font-size: 12px;
+            color: #333;
+            z-index: 50; /* Above chart */
+            transition: background-color 0.2s ease;
+        }
+        .toggle-button:hover {
+            background-color: rgba(180, 180, 180, 0.8);
+        }
+        .toggle-button .fa-minimize { display: none; } /* Hide minimize icon by default */
+        .chart-container.maximized .toggle-button .fa-minimize { display: inline; } /* Show minimize */
+        .chart-container.maximized .toggle-button .fa-maximize { display: none; } /* Hide maximize */
+
+        /* Maximized State */
+        .chart-container.maximized {
+            position: fixed;
+            top: 70px; /* Below top bar */
+            left: 15px;
+            right: 15px;
+            bottom: 15px;
+            width: auto; /* Let fixed positioning handle width */
+            height: auto; /* Let fixed positioning handle height */
+            z-index: 900; /* Above grid, below top bar */
+            padding: 30px; /* More padding when maximized */
+        }
+
+        /* Hidden State for other containers */
+        .dashboard-grid > .chart-container.hidden {
+            opacity: 0;
+            transform: scale(0.8);
+            pointer-events: none; /* Disable interaction when hidden */
+        }
+
+
+        /* Plotly Gridline styles */
+         .plotly .gridlayer .gridline { stroke: #e0e0e0 !important; stroke-width: 1px !important; }
+         .plotly .gridlayer .zeroline { stroke: #bdbdbd !important; stroke-width: 1px !important; }
+         .plotly .xaxislayer-above .xtick line, .plotly .yaxislayer-above .ytick line { stroke: #bdbdbd !important; }
+         .plotly .xaxislayer-above .xtick text, .plotly .yaxislayer-above .ytick text { fill: #444 !important; font-size: 10px !important; }
+         .plotly .xaxislayer-above .axistitle, .plotly .yaxislayer-above .axistitle { font-size: 11px !important; fill: #444 !important; }
+
     </style>
 </head>
 
 <body>
+    <!-- Top Bar (same as before) -->
     <div id="topBar">
         <img src="cgs_logo.png" alt="Logo" href="https://cgs.umd.edu/">
         <a class="ip" href="index.html">Industrial Park Dashboard</a>
@@ -117,52 +168,583 @@
         </div>
     </div>
 
+    <!-- Leaflet Map Container -->
+    <div id="viewDiv"></div>
+
+    <!-- Dashboard Grid Container -->
     <div class="dashboard-grid">
+        <!-- Added button to each container -->
         <div class="chart-container">
+            <button class="toggle-button" data-chart-id="statusChart">
+                <i class="fas fa-maximize"></i><i class="fas fa-minimize"></i>
+            </button>
             <h2>Status Distribution</h2>
-            <img src="public/images/status_distribution.png" alt="Status Distribution">
+            <div id="statusChart" class="plotly-chart-div"></div>
         </div>
         <div class="chart-container">
+             <button class="toggle-button" data-chart-id="industryChart">
+                <i class="fas fa-maximize"></i><i class="fas fa-minimize"></i>
+            </button>
             <h2>Industry Distribution</h2>
-            <img src="public/images/industry_distribution.png" alt="Industry Distribution">
+            <div id="industryChart" class="plotly-chart-div"></div>
         </div>
         <div class="chart-container">
-            <h2>Regional Distribution</h2>
-            <img src="public/images/region_status.png" alt="Regional Distribution">
+             <button class="toggle-button" data-chart-id="regionStatusChart">
+                <i class="fas fa-maximize"></i><i class="fas fa-minimize"></i>
+            </button>
+            <h2>Regional Distribution by Status</h2>
+            <div id="regionStatusChart" class="plotly-chart-div"></div>
         </div>
         <div class="chart-container">
+             <button class="toggle-button" data-chart-id="ageChart">
+                <i class="fas fa-maximize"></i><i class="fas fa-minimize"></i>
+            </button>
             <h2>Age Distribution</h2>
-            <img src="public/images/age_distribution.png" alt="Age Distribution">
+            <div id="ageChart" class="plotly-chart-div"></div>
         </div>
         <div class="chart-container">
-            <h2>Electricity Capacity by Status</h2>
-            <img src="public/images/electricity_capacity_status.png" alt="Electricity Capacity by Status">
+             <button class="toggle-button" data-chart-id="elecCapStatusChart">
+                <i class="fas fa-maximize"></i><i class="fas fa-minimize"></i>
+            </button>
+            <h2>Electricity Capacity (GW) by Status</h2>
+            <div id="elecCapStatusChart" class="plotly-chart-div"></div>
         </div>
         <div class="chart-container">
-            <h2>Electricity Capacity by Industry</h2>
-            <img src="public/images/electricity_capacity_industry.png" alt="Electricity Capacity by Industry">
+             <button class="toggle-button" data-chart-id="elecCapIndustryChart">
+                <i class="fas fa-maximize"></i><i class="fas fa-minimize"></i>
+            </button>
+            <h2>Electricity Capacity (GW) by Industry</h2>
+            <div id="elecCapIndustryChart" class="plotly-chart-div"></div>
         </div>
         <div class="chart-container">
+             <button class="toggle-button" data-chart-id="elecSourcesChart">
+                <i class="fas fa-maximize"></i><i class="fas fa-minimize"></i>
+            </button>
             <h2>Electricity Sources</h2>
-            <img src="public/images/electricity_sources.png" alt="Electricity Sources">
+            <div id="elecSourcesChart" class="plotly-chart-div"></div>
         </div>
-        <!-- <div class="chart-container">
+         <div class="chart-container">
+             <button class="toggle-button" data-chart-id="foreignCompaniesChart">
+                <i class="fas fa-maximize"></i><i class="fas fa-minimize"></i>
+            </button>
             <h2>Foreign Company Involvement</h2>
-            <img src="public/images/foreign_founders.png" alt="Foreign Founders Distribution">
-        </div> -->
+            <div id="foreignCompaniesChart" class="plotly-chart-div"></div>
+        </div>
         <div class="chart-container">
-            <h2>Disputes</h2>
-            <img src="public/images/disputes.png" alt="Disputes Distribution">
+             <button class="toggle-button" data-chart-id="disputesChart">
+                <i class="fas fa-maximize"></i><i class="fas fa-minimize"></i>
+            </button>
+            <h2>Disputes Distribution</h2>
+            <div id="disputesChart" class="plotly-chart-div"></div>
         </div>
     </div>
 
-    <div id="viewDiv"></div>
 
     <script>
+        // Initialize Leaflet Map
         var map = L.map('viewDiv', { zoomControl: false }).setView([-2.548926, 118.0148634], 5);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+            attribution: 'Tiles © Esri | Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
         }).addTo(map);
+
+        // --- Plotly Chart Generation ---
+        document.addEventListener('DOMContentLoaded', function() {
+            // --- Color Palettes ---
+            const status_pal = ['#D9D9D9', '#FDE49B', '#A6E4B7', '#277E3E', '#4285F4', '#E75D51'];
+            const indus_pal = ['#6DB1A6', '#DBDB92', '#9D99B8', '#D76154', '#045993','#D89343', '#D9ABC2', "#9A619C", '#DCCA4E', '#6B392D', '#B7B7B7'];
+            const elec_pal = ['#009DAD', '#000000', '#6D4F16', '#60A760', '#DBB714', '#353783', '#B7B7B7'];
+            const foreign_pal = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728'];
+            const dispute_pal = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b'];
+
+            // --- Refined Default Layout (Closer to Seaborn Whitegrid) ---
+             const defaultLayout = {
+                paper_bgcolor: 'rgba(255,255,255,0)', // Transparent background
+                plot_bgcolor: 'rgba(255,255,255,0)',  // Transparent plot area
+                margin: { l: 50, r: 20, t: 10, b: 50 }, // Default margins
+                font: { family: 'Arial, sans-serif', size: 10, color: '#444' },
+                xaxis: {
+                    gridcolor: '#e0e0e0', linecolor: '#bdbdbd', tickcolor: '#bdbdbd',
+                    zerolinecolor: '#bdbdbd', zerolinewidth: 1, showgrid: true, showline: true,
+                    automargin: true, tickfont: { size: 9 }, title: { standoff: 15 } // Add space for title
+                },
+                yaxis: {
+                    gridcolor: '#e0e0e0', linecolor: '#bdbdbd', tickcolor: '#bdbdbd',
+                    zerolinecolor: '#bdbdbd', zerolinewidth: 1, showgrid: true, showline: false,
+                    automargin: true, tickfont: { size: 9 }, title: { standoff: 15 } // Add space for title
+                },
+                legend: {
+                    bgcolor: 'rgba(255, 255, 255, 0.8)', bordercolor: '#e0e0e0',
+                    borderwidth: 1, font: { size: 9 }
+                },
+                hoverlabel: { bgcolor: "#555", font: { color: 'white', size: 10 } },
+                autosize: true
+            };
+
+            const plotlyConfig = {
+                responsive: true,
+                displaylogo: false,
+                modeBarButtonsToRemove: ['toImage', 'sendDataToCloud', 'lasso2d', 'select2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d']
+            };
+
+           // --- Function to fetch and parse CSV data using PapaParse ---
+           async function fetchData() {
+                return new Promise((resolve, reject) => {
+                    Papa.parse('CGS_Industrial_Parks_Sept_2024.csv', {
+                        download: true,
+                        header: true,
+                        skipEmptyLines: true,
+                        dynamicTyping: true, // Auto-detect types
+                        transformHeader: header => header.trim(), // Trim header whitespace
+                        complete: function(results) {
+                            if (results.data && results.data.length > 0) {
+                                console.log("CSV Data Loaded with PapaParse:", results.data.length, "rows");
+                                console.log("Headers Found:", results.meta.fields); // Log detected headers
+                                 if (results.data.length > 0) {
+                                     console.log("First row Status:", results.data[0]['Status']);
+                                     console.log("First row Age:", results.data[0]['Age']);
+                                     console.log("First row Elec MW:", results.data[0]['Electricity Capacity (MW)']);
+                                     console.log("First row PLN:", results.data[0]['PLN']); // Check boolean/numeric parsing
+                                 }
+
+                                // Post-processing and type coercion
+                                const booleanColumns = ['Foreign Founder or Manager', 'Foreign Tenants',
+                                    'China as Founder or Manager', 'China as Tenant', 'PLN',
+                                    'Captive Coal Power Plant', 'Captive Gas Power Plant',
+                                    'Bioenergy', 'Solar', 'Hydropower', 'Electricity Provider Unclear',
+                                    'Legal dispute with Indonesian government', 'Legal dispute with a company',
+                                    'Dispute with local residents', 'Workers\' rights dispute',
+                                    'Environmental Impact', 'Land Acquisition Issues'];
+
+                                results.data.forEach(row => {
+                                    // Ensure booleans are 0 or 1
+                                    for (const col of booleanColumns) {
+                                        const val = row[col];
+                                        if (val === 1 || val === true || String(val).trim().toLowerCase() === 'true' || String(val).trim() === '1') {
+                                            row[col] = 1;
+                                        } else {
+                                            row[col] = 0; // Default to 0
+                                        }
+                                    }
+                                    // Ensure numerics are numbers or null/0
+                                    ['Age', 'Electricity Capacity (MW)'].forEach(col => {
+                                        if (row[col] === null || row[col] === undefined || row[col] === '' || isNaN(Number(row[col]))){
+                                            row[col] = null; // Or 0 if preferred for calculations
+                                        } else {
+                                            row[col] = Number(row[col]);
+                                        }
+                                    });
+
+                                     // Calculate GW
+                                    row['Electricity Capacity (GW)'] = row['Electricity Capacity (MW)'] !== null ? row['Electricity Capacity (MW)'] / 1000 : 0;
+                                });
+
+                                resolve(results.data);
+                            } else {
+                                console.error("PapaParse completed but no data found or errors:", results.errors);
+                                reject("No data parsed from CSV.");
+                            }
+                        },
+                        error: function(error) {
+                            console.error("Error fetching or parsing CSV with PapaParse:", error);
+                            alert("Failed to load dashboard data. Please check the console.");
+                            reject(error);
+                        }
+                    });
+                });
+            }
+
+
+            // --- Chart Generation Functions (Refined Layouts) ---
+            function getClonedLayout() {
+                return JSON.parse(JSON.stringify(defaultLayout));
+            }
+
+             function createStatusChart(data) {
+                const statusOrder = ["Before Construction", "Under Construction", "Operational", "Operational with Continued Construction", "Stalled", "Unclear"];
+                const counts = statusOrder.reduce((acc, status) => { acc[status] = 0; return acc; }, {});
+                data.forEach(row => {
+                    const status = row['Status']?.toString().trim();
+                    if (status && statusOrder.includes(status)) {
+                        counts[status]++;
+                    } else {
+                        counts['Unclear']++;
+                    }
+                });
+                const colors = statusOrder.map((status, i) => status_pal[i % status_pal.length]);
+
+                const trace = {
+                    x: statusOrder,
+                    y: statusOrder.map(status => counts[status]),
+                    type: 'bar',
+                    marker: { color: colors, line: { color: 'rgba(0,0,0,0.2)', width: 0.5 } },
+                    text: statusOrder.map(status => counts[status]),
+                    textposition: 'outside', textfont: { size: 9, color: '#444'},
+                    cliponaxis: false, hoverinfo: 'x+y'
+                };
+
+                const layout = getClonedLayout();
+                layout.title = null;
+                layout.xaxis = { ...layout.xaxis, title: {text:'Status', standoff: 10}, categoryorder: 'array', categoryarray: statusOrder, tickangle: -20, automargin: true }; // Slight angle
+                layout.yaxis = { ...layout.yaxis, title: 'Number of Parks', showgrid: true, gridcolor: '#e0e0e0', automargin: true };
+                layout.margin = { l: 60, r: 20, t: 10, b: 80 }; // Increased bottom margin
+                layout.bargap = 0.2;
+
+                Plotly.newPlot('statusChart', [trace], layout, plotlyConfig);
+            }
+
+            function createIndustryChart(data) {
+                const industryOrder = ['Mixed/General', 'Manufacturing', 'IT', 'Nickel', 'Aluminum', 'Other Metals', 'Chemicals', 'Petrochemical', 'Palm Oil', 'Coal', 'Unknown'];
+                const counts = industryOrder.reduce((acc, ind) => { acc[ind] = 0; return acc; }, {});
+                data.forEach(row => {
+                    const industry = row['Main Industry']?.toString().trim();
+                    if (industry && industryOrder.includes(industry)) {
+                        counts[industry]++;
+                    } else {
+                        counts['Unknown']++;
+                    }
+                });
+                const colors = industryOrder.map((ind, i) => indus_pal[i % indus_pal.length]);
+
+                const trace = {
+                    x: industryOrder.map(ind => counts[ind]),
+                    y: industryOrder, type: 'bar', orientation: 'h',
+                    marker: { color: colors, line: { color: 'rgba(0,0,0,0.2)', width: 0.5 } },
+                    text: industryOrder.map(ind => counts[ind]), textposition: 'outside',
+                    textfont: { size: 9, color: '#444'}, cliponaxis: false, hoverinfo: 'y+x'
+                };
+
+                const layout = getClonedLayout();
+                layout.title = null;
+                layout.xaxis = { ...layout.xaxis, title: 'Number of Parks', showgrid: true, gridcolor: '#e0e0e0', automargin: true };
+                layout.yaxis = {
+                    ...layout.yaxis, title: {text: 'Main Industry', standoff: 20},
+                    categoryorder: 'array', categoryarray: [...industryOrder].reverse(),
+                    autorange: 'reversed', showgrid: false, showline: true, automargin: true
+                };
+                layout.margin = { l: 130, r: 40, t: 10, b: 40 }; // Increased left/right margin
+                layout.bargap = 0.2;
+
+                Plotly.newPlot('industryChart', [trace], layout, plotlyConfig);
+            }
+
+             function createRegionStatusChart(data) {
+                 const regionStatusCounts = {};
+                 const allStatuses = new Set();
+                 const allRegions = new Set();
+                 data.forEach(row => {
+                    const region = row['Region']?.toString().trim();
+                    const status = row['Status']?.toString().trim();
+                    if (region && status) {
+                        allRegions.add(region); allStatuses.add(status);
+                        if (!regionStatusCounts[region]) regionStatusCounts[region] = {};
+                        if (!regionStatusCounts[region][status]) regionStatusCounts[region][status] = 0;
+                        regionStatusCounts[region][status]++;
+                    }
+                 });
+                 const statusOrder = ["Before Construction", "Under Construction", "Operational", "Operational with Continued Construction", "Stalled", "Unclear"];
+                 const presentStatuses = statusOrder.filter(s => allStatuses.has(s));
+                 const sortedRegions = Array.from(allRegions).sort((a, b) => a.localeCompare(b)); // Ensure consistent sorting
+                 const traces = [];
+
+                 presentStatuses.forEach((status) => {
+                     const statusIndex = statusOrder.indexOf(status);
+                     traces.push({
+                         x: sortedRegions, y: sortedRegions.map(region => regionStatusCounts[region]?.[status] || 0),
+                         name: status, type: 'bar',
+                         marker: { color: status_pal[statusIndex % status_pal.length], line: { color: 'rgba(0,0,0,0.1)', width: 0.5 } },
+                         hoverinfo: 'x+y+name'
+                     });
+                 });
+
+                 const layout = getClonedLayout();
+                 layout.title = null;
+                 layout.xaxis = { ...layout.xaxis, title: { text: 'Region', standoff: 10}, tickangle: -45, categoryorder: 'array', categoryarray: sortedRegions, automargin: true };
+                 layout.yaxis = { ...layout.yaxis, title: 'Number of Parks', showgrid: true, gridcolor: '#e0e0e0', automargin: true };
+                 layout.barmode = 'stack';
+                 layout.legend = { ...defaultLayout.legend, traceorder: 'normal', orientation: "h", yanchor: "bottom", y: 0.5, xanchor: "center", x: 0.5, font: {size: 8}}; // Smaller legend font
+                 layout.margin = { l: 60, r: 20, t: 10, b: 120 }; // Much larger bottom margin
+
+                 Plotly.newPlot('regionStatusChart', traces, layout, plotlyConfig);
+             }
+
+            function createAgeChart(data) {
+                const validAges = data.map(row => row['Age']).filter(age => typeof age === 'number' && !isNaN(age) && age >= 0);
+
+                const trace = {
+                    x: validAges, type: 'histogram',
+                    marker: { color: '#4285F4', line: {color: 'rgba(0,0,0,0.4)', width: 0.5} },
+                    autobinx: false, // Use explicit binning if needed
+                    nbinsx: 12 // Adjust number of bins to match PNG approx.
+                    // xbins: { size: 5 } // Or set specific size
+                };
+
+                const layout = getClonedLayout();
+                layout.title = null;
+                layout.xaxis = { ...layout.xaxis, title: { text: 'Age (Years)', standoff: 10 }, automargin: true };
+                layout.yaxis = { ...layout.yaxis, title: 'Number of Parks', showgrid: true, gridcolor: '#e0e0e0', automargin: true };
+                layout.bargap = 0.05;
+                layout.margin = { l: 60, r: 20, t: 10, b: 60 }; // Adjust margins
+
+                Plotly.newPlot('ageChart', [trace], layout, plotlyConfig);
+            }
+
+            function createElecCapStatusChart(data) {
+                 const statusOrder = ["Before Construction", "Under Construction", "Operational", "Operational with Continued Construction", "Stalled", "Unclear"];
+                 const capacityByStatus = statusOrder.reduce((acc, status) => { acc[status] = 0; return acc; }, {});
+                 let parksWithCapacity = 0;
+                 data.forEach(row => {
+                    const status = row['Status']?.toString().trim() || 'Unclear';
+                    const capacity = row['Electricity Capacity (GW)'];
+                    if (typeof capacity === 'number' && !isNaN(capacity) && capacity > 0) {
+                         const validStatus = statusOrder.includes(status) ? status : 'Unclear';
+                         capacityByStatus[validStatus] += capacity;
+                         parksWithCapacity++;
+                    }
+                 });
+                 const colors = statusOrder.map((status, i) => status_pal[i % status_pal.length]);
+
+                 const trace = {
+                    x: statusOrder, y: statusOrder.map(status => capacityByStatus[status]), type: 'bar',
+                    marker: { color: colors, line: { color: 'rgba(0,0,0,0.2)', width: 0.5 } },
+                    text: statusOrder.map(status => capacityByStatus[status] > 0 ? capacityByStatus[status].toFixed(1) : ''),
+                    textposition: 'outside', textfont: { size: 9, color: '#444'}, cliponaxis: false, hoverinfo: 'x+y'
+                 };
+
+                 const layout = getClonedLayout();
+                 layout.title = null;
+                 layout.xaxis = { ...layout.xaxis, title: { text: 'Status', standoff: 10 }, categoryorder: 'array', categoryarray: statusOrder, tickangle: -20, automargin: true };
+                 layout.yaxis = { ...layout.yaxis, title: 'Total Capacity (GW)', showgrid: true, gridcolor: '#e0e0e0', automargin: true };
+                 layout.margin = { l: 60, r: 20, t: 10, b: 80 };
+                 layout.bargap = 0.2;
+                 layout.annotations = [{
+                     text: `(${parksWithCapacity} Parks Reporting Capacity)`, align: 'center', showarrow: false,
+                     xref: 'paper', yref: 'paper', x: 0.5, y: -0.30, font: {size: 9} // Adjusted y position
+                 }];
+
+                 Plotly.newPlot('elecCapStatusChart', [trace], layout, plotlyConfig);
+             }
+
+            function createElecCapIndustryChart(data) {
+                 const industryOrder = ['Mixed/General', 'Manufacturing', 'IT', 'Nickel', 'Aluminum', 'Other Metals', 'Chemicals', 'Petrochemical', 'Palm Oil', 'Coal', 'Unknown'];
+                 const capacityByIndustry = industryOrder.reduce((acc, ind) => { acc[ind] = 0; return acc; }, {});
+                 let parksWithCapacity = 0;
+                 data.forEach(row => {
+                    const industry = row['Main Industry']?.toString().trim() || 'Unknown';
+                    const capacity = row['Electricity Capacity (GW)'];
+                     if (typeof capacity === 'number' && !isNaN(capacity) && capacity > 0) {
+                          const validIndustry = industryOrder.includes(industry) ? industry : 'Unknown';
+                          capacityByIndustry[validIndustry] += capacity;
+                          parksWithCapacity++;
+                     }
+                 });
+                 const filteredIndustries = industryOrder.filter(ind => capacityByIndustry[ind] > 0);
+                 const filteredCapacities = filteredIndustries.map(ind => capacityByIndustry[ind]);
+                 const colors = filteredIndustries.map((ind, i) => indus_pal[industryOrder.indexOf(ind) % indus_pal.length]);
+
+                 const trace = {
+                     x: filteredCapacities, y: filteredIndustries, type: 'bar', orientation: 'h',
+                     marker: { color: colors, line: { color: 'rgba(0,0,0,0.2)', width: 0.5 } },
+                     text: filteredCapacities.map(cap => cap > 0 ? cap.toFixed(1) : ''),
+                     textposition: 'outside', textfont: { size: 9, color: '#444'}, cliponaxis: false, hoverinfo: 'y+x'
+                 };
+
+                 const layout = getClonedLayout();
+                 layout.title = null;
+                 layout.xaxis = { ...layout.xaxis, title: 'Total Capacity (GW)', showgrid: true, gridcolor: '#e0e0e0', automargin: true };
+                 layout.yaxis = {
+                    ...layout.yaxis, title: { text: 'Main Industry', standoff: 20 }, categoryorder: 'array',
+                    categoryarray: [...filteredIndustries].reverse(), autorange: 'reversed',
+                    showgrid: false, showline: true, automargin: true
+                 };
+                 layout.margin = { l: 130, r: 40, t: 10, b: 40 };
+                 layout.bargap = 0.2;
+                 layout.annotations = [{
+                     text: `(${parksWithCapacity} Parks Reporting Capacity)`, align: 'center', showarrow: false,
+                     xref: 'paper', yref: 'paper', x: 0.5, y: -0.18, font: {size: 9} // Adjust position
+                 }];
+
+                 Plotly.newPlot('elecCapIndustryChart', [trace], layout, plotlyConfig);
+            }
+
+            function createElecSourcesChart(data) {
+                const sources = ['PLN', 'Captive Coal Power Plant', 'Captive Gas Power Plant', 'Bioenergy', 'Solar', 'Hydropower', 'Electricity Provider Unclear'];
+                const counts = sources.reduce((acc, src) => { acc[src] = 0; return acc; }, {});
+                let totalParksCounted = 0;
+                data.forEach(row => {
+                     let sourceFound = false;
+                    sources.forEach(src => { if (row[src] === 1) { counts[src]++; sourceFound = true; } });
+                     if(sourceFound) totalParksCounted++;
+                 });
+                const displayLabels = sources.map(s => s.replace(' Power Plant', '').replace('Electricity Provider ', ''));
+                const colors = sources.map((src, index) => elec_pal[index % elec_pal.length]);
+
+                const trace = {
+                    x: displayLabels, y: sources.map(src => counts[src]), type: 'bar',
+                    marker: { color: colors, line: { color: 'rgba(0,0,0,0.2)', width: 0.5 } },
+                    text: sources.map(src => counts[src]), textposition: 'outside',
+                    textfont: { size: 9, color: '#444'}, cliponaxis: false, hoverinfo: 'x+y'
+                };
+
+                const layout = getClonedLayout();
+                 layout.title = null;
+                 layout.xaxis = { ...layout.xaxis, title: {text: 'Source Type', standoff: 10}, tickangle: -30, categoryorder: 'array', categoryarray: displayLabels, automargin: true };
+                 layout.yaxis = { ...layout.yaxis, title: 'Number of Parks Using Source', showgrid: true, gridcolor: '#e0e0e0', automargin: true };
+                 layout.margin = { l: 60, r: 20, t: 10, b: 100 }; // Increased bottom margin
+                 layout.bargap = 0.2;
+                 layout.annotations = [{
+                     text: `(${totalParksCounted} Parks Reporting Source)`, align: 'center', showarrow: false,
+                     xref: 'paper', yref: 'paper', x: 0.5, y: -0.35, font: {size: 9} // Adjust position
+                 }];
+
+                 Plotly.newPlot('elecSourcesChart', [trace], layout, plotlyConfig);
+            }
+
+             function createForeignCompaniesChart(data) {
+                 const types = ['Foreign Founder or Manager', 'Foreign Tenants', 'China as Founder or Manager', 'China as Tenant'];
+                 const counts = types.reduce((acc, type) => { acc[type] = 0; return acc; }, {});
+                 let parksCounted = 0;
+                 data.forEach(row => {
+                     let involvementFound = false;
+                     types.forEach(type => { if (row[type] === 1) { counts[type]++; involvementFound = true; } });
+                     if (involvementFound) parksCounted++;
+                 });
+                 const displayLabels = ['Foreign\nFounder/Manager', 'Foreign\nTenants', 'Chinese\nFounder', 'Chinese\nTenant'];
+                 const trace = {
+                     x: displayLabels, y: types.map(type => counts[type]), type: 'bar',
+                     marker: { color: foreign_pal, line: { color: 'rgba(0,0,0,0.2)', width: 0.5 } },
+                     text: types.map(type => counts[type]), textposition: 'outside',
+                     textfont: { size: 9, color: '#444'}, cliponaxis: false, hoverinfo: 'x+y'
+                 };
+
+                 const layout = getClonedLayout();
+                 layout.title = null;
+                 layout.xaxis = { ...layout.xaxis, title: { text: 'Involvement Type', standoff: 10 }, tickangle: -45, automargin: true };
+                 layout.yaxis = { ...layout.yaxis, title: 'Number of Parks', showgrid: true, gridcolor: '#e0e0e0', automargin: true};
+                 layout.margin = { l: 60, r: 20, t: 10, b: 60 };
+                 layout.bargap = 0.2;
+                 layout.annotations = [{
+                     text: `(${parksCounted} Parks Reporting Involvement)`, align: 'center', showarrow: false,
+                     xref: 'paper', yref: 'paper', x: 0.5, y: -0.34, font: {size: 9}
+                 }];
+
+                 Plotly.newPlot('foreignCompaniesChart', [trace], layout, plotlyConfig);
+            }
+
+             function createDisputesChart(data) {
+                 const disputeTypes = ['Legal dispute with Indonesian government', 'Legal dispute with a company', 'Dispute with local residents', 'Workers\' rights dispute', 'Environmental Impact', 'Land Acquisition Issues'];
+                 const counts = disputeTypes.reduce((acc, type) => { acc[type] = 0; return acc; }, {});
+                 let parksWithDisputes = 0;
+                 data.forEach(row => {
+                    let disputeFound = false;
+                    disputeTypes.forEach(type => { if (row[type] === 1) { counts[type]++; disputeFound = true; } });
+                    if (disputeFound) parksWithDisputes++;
+                 });
+                 const sortedData = disputeTypes.map(type => ({ type: type, count: counts[type] })).sort((a, b) => b.count - a.count);
+                 const displayLabels = sortedData.map(d => d.type.replace('Legal dispute with Indonesian government', 'Legal w/ Govt.')
+                                                               .replace('Legal dispute with a company','Legal w/ Company')
+                                                               .replace('Dispute with local residents', 'Dispute w/ Residents')
+                                                               .replace('Workers\' rights dispute', 'Worker Rights')
+                                                               .replace('Land Acquisition Issues','Land Acq. Issues'));
+                 const colors = sortedData.map((d, index) => dispute_pal[index % dispute_pal.length]);
+
+                 const trace = {
+                    x: displayLabels, y: sortedData.map(d => d.count), type: 'bar',
+                    marker: { color: colors, line: { color: 'rgba(0,0,0,0.2)', width: 0.5 } },
+                    text: sortedData.map(d => d.count), textposition: 'outside',
+                    textfont: { size: 9, color: '#444'}, cliponaxis: false, hoverinfo: 'x+y'
+                 };
+
+                 const layout = getClonedLayout();
+                 layout.title = null;
+                 layout.xaxis = { ...layout.xaxis, title: { text: 'Dispute Type', standoff: 10 }, tickangle: -25, categoryorder: 'array', categoryarray: displayLabels, automargin: true };
+                 layout.yaxis = { ...layout.yaxis, title: 'Number of Parks', showgrid: true, gridcolor: '#e0e0e0', automargin: true };
+                 layout.margin = { l: 60, r: 20, t: 10, b: 100 }; // Increased bottom margin
+                 layout.bargap = 0.2;
+                 layout.annotations = [{
+                     text: `(${parksWithDisputes} Parks Reporting Disputes)`, align: 'center', showarrow: false,
+                     xref: 'paper', yref: 'paper', x: 0.5, y: -0.35, font: {size: 9} // Adjust position
+                 }];
+
+                 Plotly.newPlot('disputesChart', [trace], layout, plotlyConfig);
+            }
+
+            // --- Maximize/Minimize Logic ---
+            const grid = document.querySelector('.dashboard-grid');
+            const allContainers = grid.querySelectorAll('.chart-container');
+
+            grid.addEventListener('click', function(event) {
+                const button = event.target.closest('.toggle-button');
+                if (!button) return; // Click wasn't on a button or its icon
+
+                const container = button.closest('.chart-container');
+                const chartId = button.dataset.chartId;
+                const chartDiv = document.getElementById(chartId);
+
+                if (container.classList.contains('maximized')) {
+                    // Minimize
+                    container.classList.remove('maximized');
+                    allContainers.forEach(cont => cont.classList.remove('hidden'));
+                    // Wait for CSS transition before resizing plot
+                    setTimeout(() => {
+                         if (chartDiv && chartDiv._fullLayout) Plotly.Plots.resize(chartDiv);
+                     }, 410); // Slightly longer than CSS transition
+                } else {
+                    // Maximize
+                    allContainers.forEach(cont => {
+                        if (cont !== container) {
+                            cont.classList.add('hidden');
+                        }
+                    });
+                    container.classList.add('maximized');
+                     // Wait for CSS transition before resizing plot
+                    setTimeout(() => {
+                         if (chartDiv && chartDiv._fullLayout) Plotly.Plots.resize(chartDiv);
+                     }, 410);
+                }
+            });
+
+
+            // --- Main Execution ---
+            fetchData().then(parkData => {
+                if (parkData && parkData.length > 0) {
+                    // Generate all charts
+                    createStatusChart(parkData);
+                    createIndustryChart(parkData);
+                    createRegionStatusChart(parkData);
+                    createAgeChart(parkData);
+                    createElecCapStatusChart(parkData);
+                    createElecCapIndustryChart(parkData);
+                    createElecSourcesChart(parkData);
+                    createForeignCompaniesChart(parkData);
+                    createDisputesChart(parkData);
+                } else {
+                    console.error("No data loaded, charts cannot be generated.");
+                }
+            }).catch(error => {
+                 console.error("Error in fetchData promise chain:", error);
+                 alert("Could not load or process dashboard data.");
+            });
+
+            // --- Window Resize Handling ---
+            let resizeTimeout;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(function() {
+                     console.log("Resizing plots...");
+                     document.querySelectorAll('.plotly-chart-div').forEach(div => {
+                         // Check if the div actually contains a Plotly plot
+                         if (div.classList.contains('js-plotly-plot') || div._fullLayout) {
+                              try {
+                                 Plotly.Plots.resize(div); // Use Plotly's resize function
+                              } catch (e) {
+                                  console.warn("Could not resize plot:", div.id, e);
+                              }
+                         }
+                     });
+                 }, 250);
+             });
+
+        }); // End DOMContentLoaded
     </script>
 </body>
 </html>
