@@ -1,0 +1,11 @@
+node_modules/
+scripts/
+*.sh
+*.exe
+*.bat
+*.py
+*.zip
+.DS_Store
+venv/
+.vscode/
+build/venv/
